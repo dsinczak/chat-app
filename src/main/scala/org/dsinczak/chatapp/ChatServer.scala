@@ -3,15 +3,13 @@ package org.dsinczak.chatapp
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.ActorMaterializer
 
-import scala.io.StdIn
 import scala.concurrent.ExecutionContext
+import scala.io.StdIn
 
-
-class ChatServer(host: String, port: Int)(implicit system: ActorSystem, materializer: ActorMaterializer) {
+class ChatServer(host: String, port: Int)(implicit system: ActorSystem, materializer: ActorMaterializer) extends Directives {
 
   implicit val executionContext: ExecutionContext = system.dispatcher
 
@@ -27,7 +25,7 @@ class ChatServer(host: String, port: Int)(implicit system: ActorSystem, material
   }
 
   val route: Route =
-    path("hello") {
+    path("chat") {
       get {
         complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "<h1>Say hello to akka-http</h1>"))
       }

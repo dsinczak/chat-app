@@ -6,11 +6,16 @@ object Chat {
   type UserId = String
   type MessageContent = String
 
-  case class User(name: UserName, id: UserId)
+  case class User(id: UserId, name: UserName)
+  case class UserList(users: List[User])
 
-  sealed trait ChatMessage
-  case class Message(id:UserId, content: MessageContent)
-  case class Join(user: User)
-  case class Leave(userId: UserId)
+  sealed trait ChatCommand
+  case class SendMessage(to: UserId, content: MessageContent) extends ChatCommand
+  case class Join(user: User) extends ChatCommand
+  case class Leave(userId: UserId) extends ChatCommand
+  case object GetUserList extends ChatCommand
+
+  sealed trait ChatEvent
+  case class UserAlreadyLoggedIn(userId: UserId) extends ChatEvent
 
 }
