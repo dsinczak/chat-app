@@ -12,11 +12,42 @@ class SessionManager(userSessionFactory: UserSessionFactory) extends Actor with 
   val sessions = new mutable.HashMap[UserId, (User, ActorRef)]()
 
   override def receive: Receive = {
-    case Join(user) if sessions.contains(user.id) => userDuplicateJoin(user)
-    case Join(user) => userJoin(user)
-    case Leave(userId) => userLeave(userId)
-    case GetUserList => userList()
-    case Terminated(terminatedUserSession) => userTerminated(terminatedUserSession)
+    // User management
+    case Join(user) if isLoggedIn(user) => userDuplicateJoin(user)
+    case Join(user)                     => userJoin(user)
+    case Leave(userId)                  => userLeave(userId)
+    case GetUserList                    => userList()
+
+    // Message sending
+    case SendMessage(from, _, _) if isNotLoggedIn(from) =>
+      sender() ! UserNotLoggedIn(from)
+    case SendMessage(_, to, _)   if isNotLoggedIn(to) =>
+      sender() ! RecipientNotLoggedIn(to)
+    case msg@SendMessage(from, to, _) =>
+      sessions(from)._2 ! msg
+      sessions(to)._2   ! msg
+      sender() ! Success
+    // Thread list retrieval
+    case GetUserThreadList(userId) if isNotLoggedIn(userId) =>
+      sender() ! UserNotLoggedIn(userId)
+    case msg@GetUserThreadList(userId) =>
+      sessions(userId)._2.forward(msg)
+
+    // Message list retrieval
+    case GetUserMessageList(userId, _) if isNotLoggedIn(userId) =>
+      sender() ! UserNotLoggedIn(userId)
+    case msg@GetUserMessageList(userId, _) =>
+      sessions(userId)._2.forward(msg)
+
+    case Terminated(userSession)        => userTerminated(userSession)
+  }
+
+  private def isNotLoggedIn(user: UserId) = {
+    !sessions.contains(user)
+  }
+
+  private def isLoggedIn(user: User) = {
+    sessions.contains(user.id)
   }
 
   private def userDuplicateJoin(user: User): Unit = {
@@ -58,6 +89,7 @@ class SessionManager(userSessionFactory: UserSessionFactory) extends Actor with 
 
 object SessionManager {
 
+  // This was added to decouple actors and make them easier to test
   type UserSessionFactory = (ActorRefFactory, User) => ActorRef
 
   def props(userSessionFactory: UserSessionFactory): Props = Props(new SessionManager(userSessionFactory))

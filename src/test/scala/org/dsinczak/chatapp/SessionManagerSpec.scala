@@ -12,62 +12,90 @@ class SessionManagerSpec extends TestKit(ActorSystem("MySpec"))
   with Matchers
   with BeforeAndAfterAll {
 
+  val bigMzUser = User("bigMZ", "Mark Zuckerberg")
+  val moonMan = User("moonMan", "Elon Musk")
 
   override def afterAll: Unit = {
     TestKit.shutdownActorSystem(system)
   }
 
-  "SessionManager actor" must {
+  "SessionManager" when {
+    "authentication is requested" must {
+      "log-in user when it does not exist" in {
+        // Given
+        val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
 
-    "log-in user when it does not exist" in {
-      // Given
-      val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
-      val user = User("bigMZ", "Mark Zuckerberg")
+        // When
+        sm ! Join(bigMzUser)
 
-      // When
-      sm ! Join(user)
+        // Then
+        expectMsg(Success)
 
-      // Then
-      expectMsg(Success)
+        // And user list must contain logged-in user
+        sm ! GetUserList
+        val userList = expectMsgClass(classOf[UserList])
+        assert(userList.users.contains(bigMzUser))
+      }
 
-      // And user list must contain logged-in user
-      sm ! GetUserList
-      val userList = expectMsgClass(classOf[UserList])
-      assert(userList.users.contains(user))
+
+      "fail to login already logged in user" in {
+        // Given
+        val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
+        sm ! Join(bigMzUser)
+
+        // When
+        sm ! Join(bigMzUser)
+
+        // Then
+        expectMsg(Success)
+        expectMsg(UserAlreadyLoggedIn("bigMZ"))
+      }
+
+      "log-out user" in {
+        // Given
+        val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
+        sm ! Join(bigMzUser)
+
+        // When
+        sm ! Leave(bigMzUser.id)
+
+        // Then
+        expectMsg(Success)
+
+        // And user list must be empty
+        sm ! GetUserList
+        expectMsg(Success)
+        val userList = expectMsgClass(classOf[UserList])
+        assert(userList.users.isEmpty)
+      }
+
+      "does not allow sending message from not logged-in user" in {
+        // Given
+        val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
+
+        // When
+        sm ! SendMessage("unknownSender", "unknownRecipient", "doIt!")
+
+        // Then
+        expectMsg(UserNotLoggedIn("unknownSender"))
+      }
+
+      "does not allow sending message to not logged-in user" in {
+        // Given
+        val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
+        sm ! Join(bigMzUser)
+        expectMsg(Success)
+
+        // When
+        sm ! SendMessage(bigMzUser.id, "unknownRecipient", "doIt!")
+
+        // Then
+        expectMsg(RecipientNotLoggedIn("unknownRecipient"))
+      }
     }
 
+    "message is send" must {
 
-    "fail to login already logged in user" in {
-      // Given
-      val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
-      val user = User("bigMZ", "Mark Zuckerberg")
-      sm ! Join(user)
-
-      // When
-      sm ! Join(user)
-
-      // Then
-      expectMsg(Success)
-      expectMsg(UserAlreadyLoggedIn("bigMZ"))
-    }
-
-    "log-out user" in {
-      // Given
-      val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
-      val user = User("bigMZ", "Mark Zuckerberg")
-      sm ! Join(user)
-
-      // When
-      sm ! Leave("bigMZ")
-
-      // Then
-      expectMsg(Success)
-
-      // And user list must be empty
-      sm ! GetUserList
-      expectMsg(Success)
-      val userList = expectMsgClass(classOf[UserList])
-      assert(userList.users.isEmpty)
     }
   }
 
