@@ -6,7 +6,7 @@ import akka.testkit.{ImplicitSender, TestKit, TestProbe}
 import org.dsinczak.chatapp.Chat._
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
-class SessionManagerSpec extends TestKit(ActorSystem("MySpec"))
+class SessionManagerSpec extends TestKit(ActorSystem(classOf[SessionManagerSpec].getSimpleName))
   with ImplicitSender
   with WordSpecLike
   with Matchers
@@ -57,7 +57,7 @@ class SessionManagerSpec extends TestKit(ActorSystem("MySpec"))
         sm ! Join(bigMzUser)
 
         // When
-        sm ! Leave(bigMzUser.id)
+        sm ! Leave(bigMzUser.userId)
 
         // Then
         expectMsg(Success)
@@ -87,15 +87,32 @@ class SessionManagerSpec extends TestKit(ActorSystem("MySpec"))
         expectMsg(Success)
 
         // When
-        sm ! SendMessage(bigMzUser.id, "unknownRecipient", "doIt!")
+        sm ! SendMessage(bigMzUser.userId, "unknownRecipient", "doIt!")
 
         // Then
         expectMsg(RecipientNotLoggedIn("unknownRecipient"))
       }
     }
 
-    "message is send" must {
+    "message is being send" must {
+      "update both users threads" in {
+        //Given
+        val userSession = new TestProbe(system)
+        val sm = system.actorOf(SessionManager.props((_, _) => userSession.ref))
+        // And logged in users
+        sm ! Join(bigMzUser)
+        expectMsg(Success)
+        sm ! Join(moonMan)
+        expectMsg(Success)
+        val sendMessage = SendMessage(bigMzUser, moonMan, "I see you")
 
+        // When
+        sm ! SendMessage(bigMzUser, moonMan, "I see you")
+
+        // Then
+        userSession.expectMsg(sendMessage) // one for sender
+        userSession.expectMsg(sendMessage) // one for recipient
+      }
     }
   }
 

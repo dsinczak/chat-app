@@ -19,27 +19,41 @@ class SessionManager(userSessionFactory: UserSessionFactory) extends Actor with 
     case GetUserList                    => userList()
 
     // Message sending
-    case SendMessage(from, _, _) if isNotLoggedIn(from) =>
-      sender() ! UserNotLoggedIn(from)
-    case SendMessage(_, to, _)   if isNotLoggedIn(to) =>
-      sender() ! RecipientNotLoggedIn(to)
-    case msg@SendMessage(from, to, _) =>
-      sessions(from)._2 ! msg
-      sessions(to)._2   ! msg
-      sender() ! Success
+    case SendMessage(from, _, _) if isNotLoggedIn(from) => userNotLoggedIn(from)
+    case SendMessage(_, to, _)   if isNotLoggedIn(to)   => recipientNotLoggedIn(to)
+    case msg@SendMessage(_,_,_)                         => sendMessage(msg)
+
     // Thread list retrieval
-    case GetUserThreadList(userId) if isNotLoggedIn(userId) =>
-      sender() ! UserNotLoggedIn(userId)
-    case msg@GetUserThreadList(userId) =>
-      sessions(userId)._2.forward(msg)
+    case GetUserThreadSummaryList(userId) if isNotLoggedIn(userId) => userNotLoggedIn(userId)
+    case msg@GetUserThreadSummaryList(userId)                      => userThreadSummaryList(msg, userId)
 
     // Message list retrieval
-    case GetUserMessageList(userId, _) if isNotLoggedIn(userId) =>
-      sender() ! UserNotLoggedIn(userId)
-    case msg@GetUserMessageList(userId, _) =>
-      sessions(userId)._2.forward(msg)
+    case GetUserMessageList(userId, _) if isNotLoggedIn(userId) => userNotLoggedIn(userId)
+    case msg@GetUserMessageList(userId, _)                      => userMessageList(msg, userId)
 
-    case Terminated(userSession)        => userTerminated(userSession)
+    case Terminated(userSession)  => userTerminated(userSession)
+  }
+
+  private def userMessageList(msg: GetUserMessageList, userId: UserId): Unit = {
+    sessions(userId)._2.forward(msg)
+  }
+
+  private def userThreadSummaryList(msg: GetUserThreadSummaryList, userId: UserId): Unit = {
+    sessions(userId)._2.forward(msg)
+  }
+
+  private def sendMessage(sendMessage:SendMessage): Unit = {
+    sessions(sendMessage.from)._2 ! sendMessage
+    sessions(sendMessage.to)._2   ! sendMessage
+    sender() ! Success
+  }
+
+  private def recipientNotLoggedIn(userId: UserId): Unit = {
+    sender() ! RecipientNotLoggedIn(userId)
+  }
+
+  private def userNotLoggedIn(userId: UserId): Unit = {
+    sender() ! UserNotLoggedIn(userId)
   }
 
   private def isNotLoggedIn(user: UserId) = {
@@ -47,12 +61,12 @@ class SessionManager(userSessionFactory: UserSessionFactory) extends Actor with 
   }
 
   private def isLoggedIn(user: User) = {
-    sessions.contains(user.id)
+    sessions.contains(user.userId)
   }
 
   private def userDuplicateJoin(user: User): Unit = {
-    log.info("Duplicate login attempt for user {}", user.id)
-    sender() ! UserAlreadyLoggedIn(user.id)
+    log.info("Duplicate login attempt for user {}", user.userId)
+    sender() ! UserAlreadyLoggedIn(user.userId)
   }
 
   private def userTerminated(terminatedUserSession: ActorRef): Unit = {
@@ -82,7 +96,7 @@ class SessionManager(userSessionFactory: UserSessionFactory) extends Actor with 
     log.info("Logging in user {}", user)
     val userSession = userSessionFactory(context, user)
     context.watch(userSession)
-    sessions += (user.id -> (user, userSession))
+    sessions += (user.userId -> (user, userSession))
     sender() ! Success
   }
 }
