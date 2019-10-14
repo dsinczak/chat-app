@@ -2,7 +2,10 @@ package org.dsinczak.chatapp
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import akka.util.Timeout
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 object ChatApp extends App {
 
@@ -12,7 +15,12 @@ object ChatApp extends App {
   val config = system.settings.config
   val host = config.getString("chat-app.host")
   val port = config.getInt("chat-app.port")
+  val retryTimeout = 5 seconds
 
-  new ChatServer(host, port).start()
+  val sessionManager = system.actorOf(SessionManager.props(
+    (actorFactory, user)=> actorFactory.actorOf(UserSession.props(user))
+  ))
+  val chatService = new ActorChatService(sessionManager, system)(Timeout(retryTimeout))
+  new ChatServer(host, port, chatService).start()
 
 }

@@ -3,7 +3,7 @@ package org.dsinczak.chatapp
 import akka.actor.ActorSystem
 import akka.actor.Status.Success
 import akka.testkit.{ImplicitSender, TestKit, TestProbe}
-import org.dsinczak.chatapp.Chat._
+import org.dsinczak.chatapp.ChatProtocol._
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
 class SessionManagerSpec extends TestKit(ActorSystem(classOf[SessionManagerSpec].getSimpleName))

@@ -5,7 +5,7 @@ import java.time.{Clock, LocalDateTime, ZoneId, ZoneOffset}
 import akka.actor.ActorSystem
 import akka.actor.Status.Success
 import akka.testkit.{ImplicitSender, TestKit}
-import org.dsinczak.chatapp.Chat._
+import org.dsinczak.chatapp.ChatProtocol._
 import org.scalatest.{BeforeAndAfterAll, Matchers, WordSpecLike}
 
 /**

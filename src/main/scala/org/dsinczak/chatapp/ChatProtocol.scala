@@ -2,7 +2,7 @@ package org.dsinczak.chatapp
 
 import java.time.LocalDateTime
 
-object Chat {
+object ChatProtocol {
 
   type UserName = String
   type UserId = String

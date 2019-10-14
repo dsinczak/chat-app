@@ -4,7 +4,7 @@ import java.time.Clock
 import java.time.LocalDateTime.now
 
 import akka.actor.{Actor, ActorLogging, Props}
-import org.dsinczak.chatapp.Chat._
+import org.dsinczak.chatapp.ChatProtocol._
 import org.dsinczak.chatapp.UserSession.{Messages, Threads}
 
 import scala.collection.mutable

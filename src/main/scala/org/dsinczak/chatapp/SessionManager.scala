@@ -2,7 +2,7 @@ package org.dsinczak.chatapp
 
 import akka.actor.Status.Success
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Terminated}
-import org.dsinczak.chatapp.Chat._
+import org.dsinczak.chatapp.ChatProtocol._
 import org.dsinczak.chatapp.SessionManager.UserSessionFactory
 
 import scala.collection.mutable
