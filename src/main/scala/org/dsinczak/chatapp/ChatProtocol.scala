@@ -35,9 +35,12 @@ object ChatProtocol {
     def apply(user: User, withUser:User): GetUserMessageList = new GetUserMessageList(user.userId, withUser.userId)
   }
 
-  sealed trait ChatEvent
-  case class UserAlreadyLoggedIn(userId: UserId) extends ChatEvent
-  case class UserNotLoggedIn(userId: UserId) extends ChatEvent
-  case class RecipientNotLoggedIn(userId:UserId) extends ChatEvent
+  trait ChatAck
+  case object Done extends ChatAck
+
+  sealed trait ChatError
+  case class UserAlreadyLoggedIn(userId: UserId) extends ChatError
+  case class UserNotLoggedIn(userId: UserId) extends ChatError
+  case class RecipientNotLoggedIn(userId:UserId) extends ChatError
 
 }

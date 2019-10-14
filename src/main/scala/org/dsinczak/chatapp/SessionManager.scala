@@ -1,7 +1,7 @@
 package org.dsinczak.chatapp
 
-import akka.actor.Status.Success
 import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Terminated}
+import akka.event.LoggingReceive
 import org.dsinczak.chatapp.ChatProtocol._
 import org.dsinczak.chatapp.SessionManager.UserSessionFactory
 
@@ -11,7 +11,7 @@ class SessionManager(userSessionFactory: UserSessionFactory) extends Actor with 
 
   val sessions = new mutable.HashMap[UserId, (User, ActorRef)]()
 
-  override def receive: Receive = {
+  override def receive: Receive = LoggingReceive {
     // User management
     case Join(user) if isLoggedIn(user) => userDuplicateJoin(user)
     case Join(user)                     => userJoin(user)
@@ -25,79 +25,62 @@ class SessionManager(userSessionFactory: UserSessionFactory) extends Actor with 
 
     // Thread list retrieval
     case GetUserThreadSummaryList(userId) if isNotLoggedIn(userId) => userNotLoggedIn(userId)
-    case msg@GetUserThreadSummaryList(userId)                      => userThreadSummaryList(msg, userId)
+    case msg:GetUserThreadSummaryList                              => userThreadSummaryList(msg)
 
     // Message list retrieval
     case GetUserMessageList(userId, _) if isNotLoggedIn(userId) => userNotLoggedIn(userId)
-    case msg@GetUserMessageList(userId, _)                      => userMessageList(msg, userId)
+    case msg:GetUserMessageList                                 => userMessageList(msg)
 
     case Terminated(userSession)  => userTerminated(userSession)
   }
 
-  private def userMessageList(msg: GetUserMessageList, userId: UserId): Unit = {
-    sessions(userId)._2.forward(msg)
-  }
+  private def userMessageList(msg: GetUserMessageList): Unit = sessions(msg.userId)._2.forward(msg)
 
-  private def userThreadSummaryList(msg: GetUserThreadSummaryList, userId: UserId): Unit = {
-    sessions(userId)._2.forward(msg)
-  }
+  private def userThreadSummaryList(msg: GetUserThreadSummaryList): Unit =
+    sessions(msg.userId)._2.forward(msg)
 
   private def sendMessage(sendMessage:SendMessage): Unit = {
     sessions(sendMessage.from)._2 ! sendMessage
     sessions(sendMessage.to)._2   ! sendMessage
-    sender() ! Success
+    sender() ! Done
   }
 
-  private def recipientNotLoggedIn(userId: UserId): Unit = {
-    sender() ! RecipientNotLoggedIn(userId)
-  }
+  private def recipientNotLoggedIn(userId: UserId): Unit = sender() ! RecipientNotLoggedIn(userId)
 
-  private def userNotLoggedIn(userId: UserId): Unit = {
-    sender() ! UserNotLoggedIn(userId)
-  }
+  private def userNotLoggedIn(userId: UserId): Unit = sender() ! UserNotLoggedIn(userId)
 
-  private def isNotLoggedIn(user: UserId) = {
-    !sessions.contains(user)
-  }
+  private def isNotLoggedIn(user: UserId) = !sessions.contains(user)
 
-  private def isLoggedIn(user: User) = {
-    sessions.contains(user.userId)
-  }
+  private def isLoggedIn(user: User) = sessions.contains(user.userId)
 
   private def userDuplicateJoin(user: User): Unit = {
     log.info("Duplicate login attempt for user {}", user.userId)
     sender() ! UserAlreadyLoggedIn(user.userId)
   }
 
-  private def userTerminated(terminatedUserSession: ActorRef): Unit = {
+  private def userTerminated(terminatedUserSession: ActorRef): Unit =
     sessions.find { case (_, (_, userSession)) => terminatedUserSession == userSession }
       .map { case (userId, (_, _)) => userId }
       .foreach { userId =>
-        log.error("User {} session was removed abruptly.")
+        log.error("User {} session was removed abruptly.", userId)
         sessions.remove(userId)
       }
-  }
 
-  private def userList(): Unit = {
-    log.debug("User list requested")
-    sender() ! UserList(sessions.values.map(_._1).toList)
-  }
+  private def userList(): Unit = sender() ! UserList(sessions.values.map(_._1).toList)
 
   private def userLeave(userId: UserId): Unit = {
-    log.info("User {} logout", userId)
     sessions.remove(userId)
-      .fold(log.warning("User {} was never logged in")) { userSession =>
+      .fold(log.warning("User {} was never logged in", userId)) { userSession =>
         context.system.stop(userSession._2)
       }
-    sender() ! Success
+    sender() ! Done
   }
 
   private def userJoin(user: User): Unit = {
-    log.info("Logging in user {}", user)
     val userSession = userSessionFactory(context, user)
     context.watch(userSession)
     sessions += (user.userId -> (user, userSession))
-    sender() ! Success
+    sender() ! Done
   }
 }
 
@@ -107,4 +90,5 @@ object SessionManager {
   type UserSessionFactory = (ActorRefFactory, User) => ActorRef
 
   def props(userSessionFactory: UserSessionFactory): Props = Props(new SessionManager(userSessionFactory))
+
 }

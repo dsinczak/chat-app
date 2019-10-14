@@ -26,3 +26,27 @@ Constraints
 
 
 Above are minimum requirements. You're welcome to come up with your own improvements if you wish so, but only as long as complexity is the same or higher than above.
+
+Sample usage:
+
+    - Run application (no parameters required, by default it bind to localhost:8080)
+    - Log-in 2 users:
+        - curl -v -X POST --header "Content-Type: application/json" -d '{"userId":"moonMan","name":"E. Musk"}' http://localhost:8080/chat/session
+        - curl -v -X POST --header "Content-Type: application/json" -d '{"userId":"awsMan","name":"J. Bezos"}' http://localhost:8080/chat/session
+    
+    - Get users:
+        - curl -v -X GET http://localhost:8080/chat/session 
+    
+    - Send few messages:
+        - curl -v -X POST --header "Content-Type: text/html" -d 'Why AWS is so expensive?' http://localhost:8080/chat/moonMan/thread/awsMan
+        - curl -v -X POST --header "Content-Type: text/html" -d 'Btw. would you like to get to the moon?' http://localhost:8080/chat/moonMan/thread/awsMan
+        - curl -v -X POST --header "Content-Type: text/html" -d 'If you dont like the pricing then dors are open' http://localhost:8080/chat/awsMan/thread/moonMan
+        - curl -v -X POST --header "Content-Type: text/html" -d 'And first try to send a dog' http://localhost:8080/chat/awsMan/thread/moonMan
+    
+    - Get users threads:
+        - curl -v -X GET  http://localhost:8080/chat/awsMan/thread 
+        - curl -v -X GET  http://localhost:8080/chat/moonMan/thread 
+    
+    - Get thread messages:
+        - curl -v -X GET  http://localhost:8080/chat/awsMan/thread/moonMan
+        - curl -v -X GET  http://localhost:8080/chat/moonMan/thread/awsMan

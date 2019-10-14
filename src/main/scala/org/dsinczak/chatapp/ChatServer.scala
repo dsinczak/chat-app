@@ -5,12 +5,15 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.{Directives, ExceptionHandler, Route}
+import akka.pattern.AskTimeoutException
 import akka.stream.ActorMaterializer
+import org.dsinczak.chatapp.ChatProtocol.{RecipientNotLoggedIn, User, UserAlreadyLoggedIn, UserNotLoggedIn}
+import org.dsinczak.chatapp.ChatService.ChatException
 
 import scala.concurrent.ExecutionContext
 import scala.io.StdIn
 
-class ChatServer(host: String, port: Int, chatService: ChatService)(implicit system: ActorSystem, materializer: ActorMaterializer) extends Directives {
+class ChatServer(host: String, port: Int, chatService: ChatService)(implicit system: ActorSystem, materializer: ActorMaterializer) extends Directives with JsonSupport {
 
   implicit val executionContext: ExecutionContext = system.dispatcher
 
@@ -26,44 +29,44 @@ class ChatServer(host: String, port: Int, chatService: ChatService)(implicit sys
   }
 
   val exceptionHandler = ExceptionHandler {
-    case e: Exception => complete(HttpResponse(InternalServerError, entity = "it broke!!!"))
+    case ChatException(UserAlreadyLoggedIn(userId)) => complete(HttpResponse(Conflict, entity = s"User '$userId' is already logged-in."))
+    case ChatException(UserNotLoggedIn(userId)) => complete(HttpResponse(Unauthorized, entity = s"User '$userId' is not logged in."))
+    case ChatException(RecipientNotLoggedIn(userId)) => complete(HttpResponse(Unauthorized, entity = s"Message recipient '$userId' is not logged in"))
+    case _: AskTimeoutException => complete(HttpResponse(RequestTimeout, entity = s"System was not able to respond in desired time"))
+    case ex =>
+      system.log.error(ex, "WTF (What a Terrible Failure)")
+      complete(HttpResponse(InternalServerError, entity = s"Something went wrong"))
   }
 
   val route: Route =
     handleExceptions(exceptionHandler) {
       path("chat" / "session") {
-        get
-          onSuccess(chatService.users()) { users =>
-            complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"Users list requested"))
-          }
+        get {
+          onSuccess(chatService.users()) { usersList => complete(usersList.users) }
         } ~
-        path("chat" / "session" / Segment) { userId: String =>
-          concat(
-            post {
-              complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"User $userId is joining messenger"))
-            },
-            delete {
-              complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"User $userId left messenger"))
-            }
-          )
+          post {
+            entity(as[User]) { user => onSuccess(chatService.join(user)) { _ => complete(HttpResponse(OK)) } }
+          }
+      } ~
+        path("chat" / "session" / Segment) { userId =>
+          delete {
+            onSuccess(chatService.leave(userId)) { _ => complete(HttpResponse(OK)) }
+          }
         } ~
         path("chat" / Segment / "thread") { userId =>
           get {
-            complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"Get $userId threads"))
+            onSuccess(chatService.threadsSummaries(userId)) { tsl => complete(tsl.threads) }
           }
         } ~
         path("chat" / Segment / "thread" / Segment) { (userId, withUserId) =>
           get {
-
-            complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"Get $userId messages with user $withUserId"))
-          }
-        } ~
-        path("chat" / Segment / "thread" / Segment) { (userId, withUserId) =>
-          post {
-            entity(as[String]) { message =>
-              complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, s"Send message '$message' from $userId to $withUserId"))
+            onSuccess(chatService.threadMessages(userId, withUserId)) { msgl => complete(msgl.messages) }
+          } ~
+            post {
+              entity(as[String]) { message =>
+                onSuccess(chatService.send(userId, withUserId, message)) { _ => complete(HttpResponse(OK)) }
+              }
             }
-          }
         }
     }
 }
