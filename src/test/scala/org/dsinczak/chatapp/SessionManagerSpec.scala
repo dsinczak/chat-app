@@ -29,7 +29,7 @@ class SessionManagerSpec extends TestKit(ActorSystem(classOf[SessionManagerSpec]
         sm ! Join(bigMzUser)
 
         // Then
-        expectMsg(Success)
+        expectMsg(Done)
 
         // And user list must contain logged-in user
         sm ! GetUserList
@@ -47,7 +47,7 @@ class SessionManagerSpec extends TestKit(ActorSystem(classOf[SessionManagerSpec]
         sm ! Join(bigMzUser)
 
         // Then
-        expectMsg(Success)
+        expectMsg(Done)
         expectMsg(UserAlreadyLoggedIn("bigMZ"))
       }
 
@@ -60,11 +60,11 @@ class SessionManagerSpec extends TestKit(ActorSystem(classOf[SessionManagerSpec]
         sm ! Leave(bigMzUser.userId)
 
         // Then
-        expectMsg(Success)
+        expectMsg(Done)
 
         // And user list must be empty
         sm ! GetUserList
-        expectMsg(Success)
+        expectMsg(Done)
         val userList = expectMsgClass(classOf[UserList])
         assert(userList.users.isEmpty)
       }
@@ -84,7 +84,7 @@ class SessionManagerSpec extends TestKit(ActorSystem(classOf[SessionManagerSpec]
         // Given
         val sm = system.actorOf(SessionManager.props((_, _) => new TestProbe(system).ref))
         sm ! Join(bigMzUser)
-        expectMsg(Success)
+        expectMsg(Done)
 
         // When
         sm ! SendMessage(bigMzUser.userId, "unknownRecipient", "doIt!")
@@ -101,9 +101,9 @@ class SessionManagerSpec extends TestKit(ActorSystem(classOf[SessionManagerSpec]
         val sm = system.actorOf(SessionManager.props((_, _) => userSession.ref))
         // And logged in users
         sm ! Join(bigMzUser)
-        expectMsg(Success)
+        expectMsg(Done)
         sm ! Join(moonMan)
-        expectMsg(Success)
+        expectMsg(Done)
         val sendMessage = SendMessage(bigMzUser, moonMan, "I see you")
 
         // When

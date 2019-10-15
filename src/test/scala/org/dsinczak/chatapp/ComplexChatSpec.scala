@@ -33,23 +33,23 @@ class ComplexChatSpec extends TestKit(ActorSystem(classOf[ComplexChatSpec].getSi
       // Given
       val chat = system.actorOf(SessionManager.props((actorRefFactory, user) => actorRefFactory.actorOf(UserSession.props(user, clock))))
       // And authenticated users
-      chat ! Join(faceMan); expectMsg(Success)
-      chat ! Join(moonMan); expectMsg(Success)
-      chat ! Join(awsMan);  expectMsg(Success)
+      chat ! Join(faceMan); expectMsg(Done)
+      chat ! Join(moonMan); expectMsg(Done)
+      chat ! Join(awsMan);  expectMsg(Done)
 
       // When user send messages to each other
-      chat ! SendMessage(faceMan, moonMan, "My tesla just broke!!"); expectMsg(Success)
-      chat ! SendMessage(faceMan, moonMan, "And my friend told me it looks silly"); expectMsg(Success)
-      chat ! SendMessage(moonMan, faceMan, "NO REFUNDS!"); expectMsg(Success)
-      chat ! SendMessage(faceMan, moonMan, "Check you FB profile..."); expectMsg(Success)
+      chat ! SendMessage(faceMan, moonMan, "My tesla just broke!!"); expectMsg(Done)
+      chat ! SendMessage(faceMan, moonMan, "And my friend told me it looks silly"); expectMsg(Done)
+      chat ! SendMessage(moonMan, faceMan, "NO REFUNDS!"); expectMsg(Done)
+      chat ! SendMessage(faceMan, moonMan, "Check you FB profile..."); expectMsg(Done)
 
-      chat ! SendMessage(faceMan, awsMan, "Can we move FB to AWS?"); expectMsg(Success)
-      chat ! SendMessage(awsMan, faceMan, "I can smell they invoice already :D"); expectMsg(Success)
-      chat ! SendMessage(faceMan, awsMan, "Will I get a discount if we move instagram too?"); expectMsg(Success)
-      chat ! SendMessage(awsMan, faceMan, "Its already so cheap i'm thinking you should even pay more!"); expectMsg(Success)
+      chat ! SendMessage(faceMan, awsMan, "Can we move FB to AWS?"); expectMsg(Done)
+      chat ! SendMessage(awsMan, faceMan, "I can smell they invoice already :D"); expectMsg(Done)
+      chat ! SendMessage(faceMan, awsMan, "Will I get a discount if we move instagram too?"); expectMsg(Done)
+      chat ! SendMessage(awsMan, faceMan, "Its already so cheap i'm thinking you should even pay more!"); expectMsg(Done)
 
-      chat ! SendMessage(moonMan, awsMan, "Wanna buy tesla?"); expectMsg(Success)
-      chat ! SendMessage(awsMan, moonMan, "Go away, I already spoke to Mark!"); expectMsg(Success)
+      chat ! SendMessage(moonMan, awsMan, "Wanna buy tesla?"); expectMsg(Done)
+      chat ! SendMessage(awsMan, moonMan, "Go away, I already spoke to Mark!"); expectMsg(Done)
 
       // Then all users threads must be up to date
       chat ! GetUserThreadSummaryList(faceMan)
